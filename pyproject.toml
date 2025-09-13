@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "f1chat"
+version = "0.1.0"
+description = "F1 Chat Agent with OpenAI Function Calling"
+dependencies = [
+    "openai>=1.0.0",
+    "requests>=2.25.0",
+    "python-dotenv>=0.19.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+line_length = 88

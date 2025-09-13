@@ -32,9 +32,17 @@ An intelligent F1 data assistant that uses OpenAI's function calling to retrieve
    Get your API key from: https://platform.openai.com/api-keys
 
 3. **Run the Agent**:
+
+   **Terminal Interface:**
    ```bash
    python run_agent.py
    ```
+
+   **Web Interface:**
+   ```bash
+   python run_web.py
+   ```
+   Then open your browser to `http://127.0.0.1:7860`
 
 ## How It Works
 
@@ -53,7 +61,9 @@ The agent uses OpenAI's function calling feature to:
 - `application/main.py` - Main chat agent with OpenAI integration
 - `crud/f1_getters.py` - F1 data retrieval functions
 - `crud/f1_data_types.py` - Data models for F1 entities
-- `run_agent.py` - Simple runner script
+- `run_agent.py` - Terminal interface launcher
+- `gradio_app.py` - Web interface with Gradio
+- `run_web.py` - Web interface launcher
 
 ## Example Conversation
 

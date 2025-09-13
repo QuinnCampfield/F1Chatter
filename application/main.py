@@ -15,12 +15,13 @@ from crud.f1_getters import get_sessions, get_drivers, get_laps
 load_dotenv()
 
 class F1ChatAgent:
-    def __init__(self):
+    def __init__(self, verbose: bool = True):
         """Initialize the F1 Chat Agent with OpenAI client and function definitions"""
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.conversation_history = []
         self.function_definitions = self._get_function_definitions()
         self.model = "gpt-4o-mini"  # Default model
+        self.verbose = verbose  # Control print statements
         
     def _get_function_definitions(self) -> List[Dict[str, Any]]:
         """Define the available F1 functions for OpenAI function calling"""
@@ -214,14 +215,16 @@ Always use the function calling feature to get real data before answering questi
                     function_name = message.function_call.name
                     function_args = json.loads(message.function_call.arguments)
                     
-                    print(f"\n🤖 Calling function: {function_name}")
-                    print(f"📋 Arguments: {function_args}")
+                    if self.verbose:
+                        print(f"\nCalling function: {function_name}")
+                        print(f"Arguments: {function_args}")
                     
                     # Execute the function
                     function_result = self._call_function(function_name, function_args)
                     formatted_result = self._format_function_result(function_name, function_result)
                     
-                    print(f"📊 Result: {formatted_result[:200]}...")
+                    if self.verbose:
+                        print(f"Result: {formatted_result[:200]}...")
                     
                     # Add function call and result to conversation
                     messages.append({
@@ -240,7 +243,8 @@ Always use the function calling feature to get real data before answering questi
                     })
                     
                     function_call_count += 1
-                    print(f"🔄 Function call {function_call_count}/{max_function_calls} completed")
+                    if self.verbose:
+                        print(f"Function call {function_call_count}/{max_function_calls} completed")
                     
                 else:
                     # No more function calls needed, return the response
@@ -249,7 +253,8 @@ Always use the function calling feature to get real data before answering questi
                     return assistant_response
             
             # If we hit the max function calls, get a final response
-            print(f"⚠️  Reached maximum function calls ({max_function_calls}), generating final response...")
+            if self.verbose:
+                print(f"Reached maximum function calls ({max_function_calls}), generating final response...")
             final_response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -263,46 +268,46 @@ Always use the function calling feature to get real data before answering questi
         except Exception as e:
             error_msg = str(e)
             if "model" in error_msg.lower() and "not found" in error_msg.lower():
-                return "❌ Model access error. Please check your OpenAI API key and model access. Try using a different model or contact OpenAI support."
+                return "Model access error. Please check your OpenAI API key and model access. Try using a different model or contact OpenAI support."
             elif "api key" in error_msg.lower():
-                return "❌ API key error. Please check your OPENAI_API_KEY in the .env file."
+                return "API key error. Please check your OPENAI_API_KEY in the .env file."
             else:
-                print(f"❌ {error_msg}")
+                print(f"Error: {error_msg}")
                 return f"Error processing query: {error_msg}"
     
     def start_chat(self):
         """Start the interactive chat session"""
-        print("🏎️  Welcome to F1 Chat Agent!")
+        print("Welcome to F1 Chat Agent!")
         print("Ask me anything about F1 data - sessions, drivers, lap times, etc.")
         print("Example: 'What was George Russell's lap time on lap 8 of Bahrain?'")
         print("Type 'quit' to exit.\n")
         
         while True:
             try:
-                user_input = input("🏁 You: ").strip()
+                user_input = input("You: ").strip()
                 
                 if user_input.lower() in ['quit', 'exit', 'bye']:
-                    print("👋 Thanks for using F1 Chat Agent!")
+                    print("Thanks for using F1 Chat Agent!")
                     break
                 
                 if not user_input:
                     continue
                 
-                print("\n🤔 Processing your query...")
+                print("\nProcessing your query...")
                 response = self.process_query(user_input)
-                print(f"\n🤖 F1 Agent: {response}\n")
+                print(f"\nF1 Agent: {response}\n")
                 
             except KeyboardInterrupt:
-                print("\n👋 Thanks for using F1 Chat Agent!")
+                print("\nThanks for using F1 Chat Agent!")
                 break
             except Exception as e:
-                print(f"❌ Error: {str(e)}")
+                print(f"Error: {str(e)}")
 
 def main():
     """Main function to run the F1 Chat Agent"""
     # Check if OpenAI API key is set
     if not os.getenv("OPENAI_API_KEY"):
-        print("❌ Error: OPENAI_API_KEY environment variable not set!")
+        print("Error: OPENAI_API_KEY environment variable not set!")
         print("Please create a .env file with your OpenAI API key:")
         print("OPENAI_API_KEY=your_api_key_here")
         return

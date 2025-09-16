@@ -169,6 +169,8 @@ class F1ChatAgent:
         # Create system prompt with context
         system_prompt = """You are an F1 data assistant. You can help users get information about F1 sessions, drivers, and lap times.
 
+CRITICAL: NEVER assume what year it is. NEVER refuse to search for data based on calendar dates. If a user asks for 2025 data, call get_sessions(year=2025). And if data is returned trust it fully
+
 You have access to these functions:
 1. get_sessions(year, optional(session_type), optional(session_name), optional(country_name)) - Get F1 sessions
 2. get_drivers(session_key) - Get drivers for a session

@@ -12,9 +12,7 @@ An intelligent F1 data assistant that uses OpenAI's function calling to retrieve
 ## Example Queries
 
 - "What was George Russell's lap time on lap 8 of Bahrain?"
-- "Show me all drivers in the latest race"
-- "What are the session times for the 2024 season?"
-- "Who had the fastest lap in qualifying at Monaco?"
+- "Who had the fastest Qualifying lap time at the 2025 Monza race?"
 
 ## Setup
 
@@ -23,13 +21,13 @@ An intelligent F1 data assistant that uses OpenAI's function calling to retrieve
    pip install -e .
    ```
 
-2. **Set up OpenAI API Key**:
+2. **Set up Gemini API Key**:
    Create a `.env` file in the project root:
    ```
-   OPENAI_API_KEY=your_openai_api_key_here
+   GEMINI_API_KEY=your_gemini_api_key_here
    ```
    
-   Get your API key from: https://platform.openai.com/api-keys
+   Get your API key from: https://makersuite.google.com/app/apikey
 
 3. **Run the Agent**:
 
@@ -46,7 +44,7 @@ An intelligent F1 data assistant that uses OpenAI's function calling to retrieve
 
 ## How It Works
 
-The agent uses OpenAI's function calling feature to:
+The agent uses Google Gemini's function calling feature to:
 
 1. **Analyze your query** to understand what F1 data you need
 2. **Call appropriate functions** from `crud/f1_getters.py`:
@@ -58,7 +56,7 @@ The agent uses OpenAI's function calling feature to:
 
 ## Architecture
 
-- `application/main.py` - Main chat agent with OpenAI integration
+- `application/main.py` - Main chat agent with Gemini integration
 - `crud/f1_getters.py` - F1 data retrieval functions
 - `crud/f1_data_types.py` - Data models for F1 entities
 - `run_agent.py` - Terminal interface launcher

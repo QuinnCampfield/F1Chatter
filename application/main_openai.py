@@ -2,7 +2,7 @@ import os
 import sys
 import json
 from typing import List, Dict, Any
-from google import genai
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 # Add parent directory to path for imports
@@ -18,52 +18,48 @@ class F1ChatAgent:
     def __init__(self, verbose: bool = True):
         """Initialize the F1 Chat Agent with Gemini client and function definitions"""
         # Configure Gemini
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY environment variable not set!")
-
-        if verbose:
-            print(f"API key loaded: {api_key[:10]}...{api_key[-4:] if len(api_key) > 14 else '***'}")
-
-        # New Google GenAI client automatically reads GEMINI_API_KEY
-        self.client = genai.Client()
-        self.model_name = "gemini-2.5-flash"
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         self.conversation_history = []
         self.function_definitions = self._get_function_definitions()
         self.verbose = verbose  # Control print statements
         
     def _get_function_definitions(self) -> List[Dict[str, Any]]:
-        """Define the available F1 functions for Gemini function calling"""
+        """Define the available F1 functions for OpenAI function calling"""
         return [
             {
                 "name": "get_sessions",
                 "description": "Get F1 sessions for a specific year, session type, session name, or country. Use this to find session keys for specific races or events.",
                 "parameters": {
+                    "type": "object",
                     "properties": {
                         "year": {
                             "type": "integer",
-                            "description": "The year to fetch sessions for (e.g., 2024, 2025)"
+                            "description": "The year to fetch sessions for (e.g., 2024, 2025)",
+                            "default": 2025
                         },
                         "session_type": {
                             "type": "string",
-                            "description": "Type of session (e.g., 'Race', 'Qualifying', 'Practice 1', 'Practice 2', 'Practice 3')"
+                            "description": "Type of session (e.g., 'Race', 'Qualifying', 'Practice 1', 'Practice 2', 'Practice 3')",
+                            "enum": ["Race", "Qualifying", "Practice 1", "Practice 2", "Practice 3", "Sprint", "Sprint Qualifying"]
                         },
                         "session_name": {
                             "type": "string",
-                            "description": "Name of session (e.g., 'Race', 'Qualifying', 'Practice 1', 'Practice 2', 'Practice 3', 'Sprint', 'Sprint Qualifying')"
+                            "description": "Name of session (e.g., 'Race', 'Sprint', 'Qualifying', 'Sprint Qualifying', 'Practice 1', 'Practice 2', 'Practice 3')",
+                            "enum": ["Race", "Qualifying", "Practice 1", "Practice 2", "Practice 3", "Sprint", "Sprint Qualifying"]
                         },
                         "country_name": {
                             "type": "string",
                             "description": "Country name for the race (e.g., 'Bahrain', 'Saudi Arabia', 'Australia')"
                         }
-                    },
-                    "required": ["year"]
+                    }
                 }
             },
             {
                 "name": "get_drivers",
                 "description": "Get F1 drivers for a specific session. Use this to find driver numbers and names for a particular race or session.",
                 "parameters": {
+                    "type": "object",
                     "properties": {
                         "session_key": {
                             "type": "string",
@@ -77,6 +73,7 @@ class F1ChatAgent:
                 "name": "get_laps",
                 "description": "Get F1 lap data for a specific session and optionally a specific driver. Use this to get lap times, sector times, and other lap data.",
                 "parameters": {
+                    "type": "object",
                     "properties": {
                         "session_key": {
                             "type": "string",
@@ -99,6 +96,7 @@ class F1ChatAgent:
                 return get_sessions(
                     year=arguments.get("year", 2025),
                     session_type=arguments.get("session_type"),
+                    session_name=arguments.get("session_name"),
                     country_name=arguments.get("country_name")
                 )
             elif function_name == "get_drivers":
@@ -162,133 +160,120 @@ class F1ChatAgent:
         return str(result)
     
     def process_query(self, user_query: str) -> str:
-        """Process a user query using Gemini with manual function calling"""
+        """Process a user query using OpenAI function calling"""
         # Add user message to conversation history
         self.conversation_history.append({"role": "user", "content": user_query})
         
-        # Create system prompt with context
-        system_prompt = """You are an F1 data assistant. You can help users get information about F1 sessions, drivers, and lap times.
-
-You have access to these functions:
-1. get_sessions(year, optional(session_type), optional(session_name), optional(country_name)) - Get F1 sessions
-2. get_drivers(session_key) - Get drivers for a session
-3. get_laps(session_key, optional(driver_number)) - Get lap data
+        # Create system message with context
+        system_message = {
+            "role": "system",
+            "content": """You are an F1 data assistant. You can help users get information about F1 sessions, drivers, and lap times.
 
 General information:
 - Session type and Session name are different. Session name allows more specific to include Sprint and Sprint Qualifying
 - A Sprint session name will be under the Race session type. But isn't typically counted as a Race colloquially
 - You need to use get_drivers to map driver names to driver numbers, the other functions use driver numbers
-- All data from the functions is in the past. Do not think about what you believe the date to be. This data is correct and up to the currentdate.
 
-Authority and temporal grounding:
-- Treat all data returned by functions (get_sessions, get_drivers, get_laps) as complete and authoritative snapshots of reality. Do not override them with calendar logic or assumptions about today's date.
-- Do not infer whether an event has happened based on current calendar dates. If a session appears in function results, assume it has occurred and should be counted.
-- Never project or predict future events. Only answer from function results you've actually received.
-- If function results show races with dates later than "today", still count them as occurred. The functions provide finalized historical data and may reflect delayed publication rather than future events.
-- When counting or summarizing, use only the returned objects (e.g., count sessions where session_type == "Race" and session_name == "Race") rather than reasoning about calendars.
+Available functions:
+1. get_sessions - Get F1 sessions for a year, session type, session name, or country
+2. get_drivers - Get drivers for a specific session (need session_key)
+3. get_laps - Get lap data for a session and optionally a specific driver
 
 For complex queries like "What was George Russell's lap time on lap 8 of Bahrain?", you need to:
 1. First call get_sessions to find the Bahrain session key
 2. Then call get_drivers to find George Russell's driver number
-3. Finally call get_laps with the session key and driver number
+3. Finally call get_laps with the session key and driver number to get his lap times
 
-When you need to call a function, respond with exactly this format:
-FUNCTION_CALL: function_name(arg1=value1, arg2=value2)
+For complex queries like "How many races have happened in 2025?", you need to:
+1. First call get_sessions with 2025 as year specified
+2. Then count in the results and get the instances of session type being Race and session name being Race.
 
-I will execute the function and provide the results. Then you can analyze the data and give a helpful response."""
+Always use the function calling feature to get real data before answering questions. Be helpful and provide detailed information."""
+        }
+        
+        # Prepare messages for OpenAI
+        messages = [system_message] + self.conversation_history
         
         try:
-            # Build conversation context
-            conversation_text = system_prompt + "\n\n"
-            for msg in self.conversation_history:
-                if msg["role"] == "user":
-                    conversation_text += f"User: {msg['content']}\n"
-                elif msg["role"] == "assistant":
-                    conversation_text += f"Assistant: {msg['content']}\n"
-
-            max_function_calls = 6
-            calls_made = 0
-
-            while calls_made <= max_function_calls:
-                # Ask the model what to do next or to answer
-                response = self.client.models.generate_content(
-                    model=self.model_name,
-                    contents=conversation_text,
-                    config={
-                        "temperature": 0.1,
-                        "max_output_tokens": 2048,
-                    }
+            # Keep calling functions until we have a final response
+            max_function_calls = 5  # Prevent infinite loops
+            function_call_count = 0
+            
+            while function_call_count < max_function_calls:
+                # Call OpenAI with function calling
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    functions=self.function_definitions,
+                    function_call="auto",
+                    temperature=0.1
                 )
-
-                assistant_response = response.text or ""
-
-                # If the model requests a function call, execute it, append a structured result, and loop
-                if "FUNCTION_CALL:" in assistant_response:
-                    function_line = next((line for line in assistant_response.split('\n') if 'FUNCTION_CALL:' in line), "")
-                    function_call_str = function_line.replace('FUNCTION_CALL:', '').strip()
-
-                    function_name = None
-                    function_args = {}
-                    if '(' in function_call_str and ')' in function_call_str:
-                        function_name = function_call_str.split('(')[0].strip()
-                        args_str = function_call_str.split('(')[1].split(')')[0].strip()
-
-                        if args_str:
-                            for arg in args_str.split(','):
-                                if '=' in arg:
-                                    key, value = arg.split('=', 1)
-                                    key = key.strip()
-                                    value = value.strip().strip('"\'')
-                                    if value.isdigit():
-                                        function_args[key] = int(value)
-                                    elif value.lower() in ['true', 'false']:
-                                        function_args[key] = value.lower() == 'true'
-                                    else:
-                                        function_args[key] = value
-
-                    if not function_name:
-                        # Could not parse a function name; break and return the current text
-                        break
-
+                
+                message = response.choices[0].message
+                
+                # Check if the model wants to call a function
+                if message.function_call:
+                    function_name = message.function_call.name
+                    function_args = json.loads(message.function_call.arguments)
+                    
                     if self.verbose:
                         print(f"\nCalling function: {function_name}")
                         print(f"Arguments: {function_args}")
-
+                    
+                    # Execute the function
                     function_result = self._call_function(function_name, function_args)
                     formatted_result = self._format_function_result(function_name, function_result)
-
+                    
                     if self.verbose:
                         print(f"Result: {formatted_result[:200]}...")
-
-                    # Crucial: explicitly provide a structured FUNCTION_RESULT the model can detect
-                    conversation_text += (
-                        f"Assistant: {assistant_response}\n"
-                        f"FUNCTION_RESULT: {function_name} -> {formatted_result}\n"
-                    )
-
-                    calls_made += 1
-                    continue
-
-                # No function call requested; treat as final answer
-                self.conversation_history.append({"role": "assistant", "content": assistant_response})
-                return assistant_response
-
-            # Safety fallback if too many calls
+                    
+                    # Add function call and result to conversation
+                    messages.append({
+                        "role": "assistant",
+                        "content": None,
+                        "function_call": {
+                            "name": function_name,
+                            "arguments": message.function_call.arguments
+                        }
+                    })
+                    
+                    messages.append({
+                        "role": "function",
+                        "name": function_name,
+                        "content": formatted_result
+                    })
+                    
+                    function_call_count += 1
+                    if self.verbose:
+                        print(f"Function call {function_call_count}/{max_function_calls} completed")
+                    
+                else:
+                    # No more function calls needed, return the response
+                    assistant_response = message.content
+                    self.conversation_history.append({"role": "assistant", "content": assistant_response})
+                    return assistant_response
+            
+            # If we hit the max function calls, get a final response
+            if self.verbose:
+                print(f"Reached maximum function calls ({max_function_calls}), generating final response...")
+            final_response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.1
+            )
+            
+            assistant_response = final_response.choices[0].message.content
             self.conversation_history.append({"role": "assistant", "content": assistant_response})
             return assistant_response
                 
         except Exception as e:
             error_msg = str(e)
-            print(f"Full error details: {error_msg}")
-            print(f"Error type: {type(e)}")
-            
-            if "api key" in error_msg.lower():
-                return "API key error. Please check your GEMINI_API_KEY in the .env file."
-            elif "quota" in error_msg.lower() or "limit" in error_msg.lower():
-                return "API quota exceeded. Please check your Gemini API usage limits."
-            elif "permission" in error_msg.lower():
-                return "Permission error. Please check your Gemini API key permissions."
+            if "model" in error_msg.lower() and "not found" in error_msg.lower():
+                return "Model access error. Please check your OpenAI API key and model access. Try using a different model or contact OpenAI support."
+            elif "api key" in error_msg.lower():
+                return "API key error. Please check your OPENAI_API_KEY in the .env file."
             else:
+                print(f"Error: {error_msg}")
                 return f"Error processing query: {error_msg}"
     
     def start_chat(self):
@@ -321,11 +306,11 @@ I will execute the function and provide the results. Then you can analyze the da
 
 def main():
     """Main function to run the F1 Chat Agent"""
-    # Check if Gemini API key is set
-    if not os.getenv("GEMINI_API_KEY"):
-        print("Error: GEMINI_API_KEY environment variable not set!")
-        print("Please create a .env file with your Gemini API key:")
-        print("GEMINI_API_KEY=your_api_key_here")
+    # Check if OpenAI API key is set
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Error: OPENAI_API_KEY environment variable not set!")
+        print("Please create a .env file with your OpenAI API key:")
+        print("OPENAI_API_KEY=your_api_key_here")
         return
     
     # Initialize and start the chat agent

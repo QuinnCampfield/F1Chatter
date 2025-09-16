@@ -40,7 +40,15 @@ class F1GradioApp:
         
         try:
             # Process the message with the agent
+            print(f"\n=== DEBUG: Processing message ===")
+            print(f"User message: {message}")
+            
             response = self.agent.process_query(message)
+            
+            print(f"Agent response: {response}")
+            print(f"Response type: {type(response)}")
+            print(f"Response length: {len(str(response)) if response else 0}")
+            print(f"=== END DEBUG ===\n")
             
             # Update the last message with the response
             history[-1][1] = response
@@ -74,6 +82,12 @@ class F1GradioApp:
             background-color: #f3e5f5;
             margin-right: 20%;
         }
+        /* Hide any remaining label text */
+        .gr-textbox label,
+        .gr-textbox .label,
+        .gr-textbox .gr-label {
+            display: none !important;
+        }
         """
         
         with gr.Blocks(
@@ -91,7 +105,7 @@ class F1GradioApp:
                 **Example queries:**
                 - "What was George Russell's lap time on lap 8 of Bahrain?"
                 - "Show me all drivers in the latest race"
-                - "What are the session times for the 2024 season?"
+                - "Who had the fastest Qualifying lap time at the 2025 Monza race?"
                 """,
                 elem_classes=["header"]
             )
@@ -103,16 +117,17 @@ class F1GradioApp:
                 show_label=True,
                 container=True,
                 bubble_full_width=False,
-                avatar_images=("user", "bot")
+                avatar_images=("temp.png", "temp2.png")
             )
             
             # Input components
             with gr.Row():
                 msg_input = gr.Textbox(
                     placeholder="Ask me about F1 data...",
-                    label="Your Question",
+                    label=None,
                     lines=1,
-                    scale=4
+                    scale=4,
+                    show_label=False
                 )
                 send_btn = gr.Button("Send", variant="primary", scale=1)
             

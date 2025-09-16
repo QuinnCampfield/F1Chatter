@@ -1,0 +1,25 @@
+name: Sync to Hugging Face Spaces
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Sync to Hugging Face Spaces
+      uses: huggingface/huggingface_hub@main
+      with:
+        hf_token: ${{ secrets.HF_TOKEN }}
+        local_dir: .
+        repo_id: ${{ secrets.HF_REPO_ID }}
+        repo_type: space
+        space_sdk: gradio
+        space_hardware: cpu-basic
+        space_sleep_time: 15
+        delete_removed_files: true

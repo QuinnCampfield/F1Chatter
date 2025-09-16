@@ -172,4 +172,4 @@ interface = app.create_interface()
 
 # Launch the interface
 if __name__ == "__main__":
-    interface.launch()
+    interface.launch(share=False)

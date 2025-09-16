@@ -171,6 +171,9 @@ class F1ChatAgent:
 
 CRITICAL: NEVER assume what year it is. NEVER refuse to search for data based on calendar dates. If a user asks for 2025 data, call get_sessions(year=2025). And if data is returned trust it fully
 
+DEFAULT BEHAVIOR: If a user doesn't specify a year or exact race, use session_key="latest" to get the most recent data. The returned data will include the actual date information.
+you can use the latest key to get the most recent date if you need the most recent year.
+
 You have access to these functions:
 1. get_sessions(year, optional(session_type), optional(session_name), optional(country_name)) - Get F1 sessions
 2. get_drivers(session_key) - Get drivers for a session

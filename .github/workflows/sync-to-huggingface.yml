@@ -3,8 +3,6 @@ name: Sync to Hugging Face Spaces
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   sync:
@@ -12,14 +10,45 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Sync to Hugging Face Spaces
-      uses: huggingface/huggingface_hub@main
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        hf_token: ${{ secrets.HF_TOKEN }}
-        local_dir: .
-        repo_id: ${{ secrets.HF_REPO_ID }}
-        repo_type: space
-        space_sdk: gradio
-        space_hardware: cpu-basic
-        space_sleep_time: 15
-        delete_removed_files: true
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        pip install huggingface_hub
+    
+    - name: Sync to Hugging Face Spaces
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      run: |
+        python -c "
+        from huggingface_hub import HfApi, Repository
+        import os
+        
+        api = HfApi(token=os.environ['HF_TOKEN'])
+        repo_id = '${{ secrets.HF_REPO_ID }}'
+        
+        # Create or update the space
+        try:
+            api.create_repo(
+                repo_id=repo_id,
+                repo_type='space',
+                exist_ok=True,
+                space_sdk='gradio',
+                space_hardware='cpu-basic'
+            )
+        except Exception as e:
+            print(f'Error creating repo: {e}')
+        
+        # Upload all files
+        api.upload_folder(
+            folder_path='.',
+            repo_id=repo_id,
+            repo_type='space',
+            commit_message='Auto-sync from GitHub'
+        )
+        
+        print('Successfully synced to Hugging Face Spaces!')
+        "

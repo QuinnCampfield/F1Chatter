@@ -13,6 +13,21 @@ short_description: An intelligent F1 data assistant powered by Google Gemini
 
 An intelligent F1 data assistant that uses Google Gemini's function calling to retrieve and analyze Formula 1 data in real-time.
 
+## Try It Live
+
+**[👉 Click here to try the F1 Chat Agent live on Hugging Face Spaces](https://huggingface.co/spaces/QuinnBGC/f1-chat-agent)**
+
+## Why This Matters
+
+**ChatGPT's Limitation:**
+![ChatGPT's Limitation](GPT_clueless.png)
+
+**Our F1 Agent's Solution:**
+![F1 Agent's Accurate Response](chatter_smart.png)
+
+*See the difference? While ChatGPT can't access current F1 data, our agent retrieves real-time information directly from the OpenF1 API.*
+
+
 ## Features
 
 - **Intelligent Query Processing**: Understands natural language queries about F1 data

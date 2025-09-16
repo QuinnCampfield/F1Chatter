@@ -46,11 +46,11 @@ class F1ChatAgent:
                         },
                         "session_type": {
                             "type": "string",
-                            "description": "Type of session (e.g., 'Race', 'Qualifying', 'Practice 1', 'Practice 2', 'Practice 3')"
+                            "description": "Type of session (only of 'Race', 'Qualifying', 'Practice 1', 'Practice 2', 'Practice 3')"
                         },
                         "session_name": {
                             "type": "string",
-                            "description": "Name of session (e.g., 'Race', 'Qualifying', 'Practice 1', 'Practice 2', 'Practice 3', 'Sprint', 'Sprint Qualifying')"
+                            "description": "Name of session (only of 'Race', 'Qualifying', 'Practice 1', 'Practice 2', 'Practice 3', 'Sprint', 'Sprint Qualifying')"
                         },
                         "country_name": {
                             "type": "string",
@@ -170,6 +170,7 @@ class F1ChatAgent:
         system_prompt = """You are an F1 data assistant. You can help users get information about F1 sessions, drivers, and lap times.
 
 CRITICAL: NEVER assume what year it is. NEVER refuse to search for data based on calendar dates. If a user asks for 2025 data, call get_sessions(year=2025). And if data is returned trust it fully
+CRITICAL: If a users says Race always assume it is NOT a Sprint. they will always specify Sprint when necessary.
 
 DEFAULT BEHAVIOR: If a user doesn't specify a year or exact race, use session_key="latest" to get the most recent data. The returned data will include the actual date information.
 you can use the latest key to get the most recent date if you need the most recent year.
@@ -180,6 +181,7 @@ You have access to these functions:
 3. get_laps(session_key, optional(driver_number)) - Get lap data
 
 General information:
+- When filtering sessions, be aware that session_type can have specific values such as 'Race', 'Qualifying', 'Practice', and 'Sprint'. Do not assume that 'Sprint' is a subtype of 'Race' unless explicitly stated in the data or instructions. If a user asks for 'Sprint' races, query for session_type='Sprint'.
 - Session type and Session name are different. Session name allows more specific to include Sprint and Sprint Qualifying
 - A Sprint session name will be under the Race session type. But isn't typically counted as a Race colloquially
 - You need to use get_drivers to map driver names to driver numbers, the other functions use driver numbers

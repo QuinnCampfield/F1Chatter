@@ -27,7 +27,7 @@ class F1ChatAgent:
 
         # New Google GenAI client automatically reads GEMINI_API_KEY
         self.client = genai.Client()
-        self.model_name = "gemini-2.5-flash"
+        self.model_name = "gemini-2.5-flash-lite"
         self.conversation_history = []
         self.function_definitions = self._get_function_definitions()
         self.verbose = verbose  # Control print statements

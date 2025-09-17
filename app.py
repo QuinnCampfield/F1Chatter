@@ -76,14 +76,6 @@ class F1GradioApp:
             Status message
         """
         try:
-            # Debug: Print email config status
-            print(f"DEBUG: Email config check:")
-            print(f"  SENDER_EMAIL: {'✓' if self.email_config['sender_email'] else '✗'}")
-            print(f"  SENDER_PASSWORD: {'✓' if self.email_config['sender_password'] else '✗'}")
-            print(f"  RECIPIENT_EMAIL: {'✓' if self.email_config['recipient_email'] else '✗'}")
-            print(f"  SMTP_SERVER: {self.email_config['smtp_server']}")
-            print(f"  SMTP_PORT: {self.email_config['smtp_port']}")
-            
             # Check if email is configured
             if not all([self.email_config['sender_email'], 
                        self.email_config['sender_password'], 
@@ -107,8 +99,6 @@ class F1GradioApp:
             else:
                 chat_log += "No chat history available.\n"
             
-            print(f"DEBUG: Attempting to send email...")
-            
             # Create email
             msg = MIMEMultipart()
             msg['From'] = self.email_config['sender_email']
@@ -117,58 +107,18 @@ class F1GradioApp:
             
             msg.attach(MIMEText(chat_log, 'plain'))
             
-            # Send email with timeout and SSL fallback
-            print(f"DEBUG: Connecting to SMTP server...")
-            
-            # Try SSL first (port 465), then TLS (port 587)
-            if self.email_config['smtp_port'] == 465:
-                print(f"DEBUG: Using SSL connection...")
-                server = smtplib.SMTP_SSL(self.email_config['smtp_server'], self.email_config['smtp_port'], timeout=30)
-            else:
-                print(f"DEBUG: Using TLS connection...")
-                server = smtplib.SMTP(self.email_config['smtp_server'], self.email_config['smtp_port'], timeout=30)
-                print(f"DEBUG: Starting TLS...")
-                server.starttls()
-            
-            print(f"DEBUG: Logging in...")
+            # Send email
+            server = smtplib.SMTP(self.email_config['smtp_server'], self.email_config['smtp_port'])
+            server.starttls()
             server.login(self.email_config['sender_email'], self.email_config['sender_password'])
-            print(f"DEBUG: Sending email...")
             text = msg.as_string()
             server.sendmail(self.email_config['sender_email'], self.email_config['recipient_email'], text)
             server.quit()
-            print(f"DEBUG: Email sent successfully!")
+            
             return "Bug report sent successfully!"
             
-        except smtplib.SMTPAuthenticationError as e:
-            error_msg = f"SMTP Authentication failed: {str(e)}"
-            print(f"DEBUG: Auth error: {error_msg}")
-            return error_msg
-        except smtplib.SMTPConnectError as e:
-            error_msg = f"SMTP Connection failed: {str(e)}"
-            print(f"DEBUG: Connection error: {error_msg}")
-            return error_msg
-        except smtplib.SMTPException as e:
-            error_msg = f"SMTP Error: {str(e)}"
-            print(f"DEBUG: SMTP error: {error_msg}")
-            return error_msg
-            
         except Exception as e:
-            error_msg = f"Failed to send bug report: {str(e)}"
-            print(f"DEBUG: Error occurred: {error_msg}")
-            
-            # Fallback: Save to file as backup
-            try:
-                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                filename = f"bug_report_{timestamp}.txt"
-                
-                with open(filename, 'w') as f:
-                    f.write(chat_log)
-                
-                print(f"DEBUG: Saved bug report to {filename} as backup")
-                return f"Email failed, but bug report saved to {filename}. Error: {str(e)}"
-            except Exception as backup_error:
-                print(f"DEBUG: Backup save also failed: {backup_error}")
-                return f"Failed to send email and save backup. Error: {str(e)}"
+            return f"Failed to send bug report: {str(e)}"
     
     def create_interface(self) -> gr.Blocks:
         """Create and return the Gradio interface"""
@@ -244,7 +194,6 @@ class F1GradioApp:
             with gr.Row():
                 clear_btn = gr.Button("Clear Chat", variant="secondary")
                 bug_report_btn = gr.Button("Report Bug", variant="secondary")
-                test_email_btn = gr.Button("Test Email Config", variant="secondary")
             
             # Status message for bug reports
             status_msg = gr.Textbox(
@@ -286,21 +235,6 @@ class F1GradioApp:
             bug_report_btn.click(
                 handle_bug_report,
                 inputs=[chatbot],
-                outputs=[status_msg, status_msg]
-            )
-            
-            # Test email config handler
-            def test_email_config():
-                config_status = []
-                config_status.append(f"SENDER_EMAIL: {'✓' if self.email_config['sender_email'] else '✗'}")
-                config_status.append(f"SENDER_PASSWORD: {'✓' if self.email_config['sender_password'] else '✗'}")
-                config_status.append(f"RECIPIENT_EMAIL: {'✓' if self.email_config['recipient_email'] else '✗'}")
-                config_status.append(f"SMTP_SERVER: {self.email_config['smtp_server']}")
-                config_status.append(f"SMTP_PORT: {self.email_config['smtp_port']}")
-                return "\n".join(config_status), gr.update(visible=True)
-            
-            test_email_btn.click(
-                test_email_config,
                 outputs=[status_msg, status_msg]
             )
             

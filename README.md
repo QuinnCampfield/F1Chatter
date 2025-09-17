@@ -11,7 +11,12 @@ short_description: An intelligent F1 data assistant powered by Google Gemini
 
 # F1 Chat Agent
 
-An intelligent F1 data assistant that uses Google Gemini's function calling to retrieve and analyze Formula 1 data in real-time.
+An intelligent F1 data assistant that uses Google Gemini's and openF1 API to retrieve and analyze Formula 1 data.
+Many LLM's fall short on live information as they are only trained to a certain point. This enables gemini to decide what API's to call to retreive data nd if it eed to call more API's or if it has enough data to make an informed response.
+
+An example would be: Asking the chatbot what was a drivers lap time on a specific lap. This would require gemeini to request the data for the session info of that specific race, call an API to get the lap information for that race, and then call an API to get the driver information to map driver name ot number. Doing all of this while not storing or saving excessive amounts of data and just using an API that already exists. 
+
+Check the Why This Matters section for an example of the usefulness.
 
 ## Try It Live
 

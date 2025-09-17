@@ -66,19 +66,6 @@ The agent uses Google Gemini's function calling feature to:
 - `app.py` - Hugging Face Spaces entry point
 - `gradio_app.py` - Web interface with Gradio
 
-## Example Conversation
-
-```
-User: What was George Russell's lap time on lap 8 of Bahrain?
-
-Agent: I'll help you find George Russell's lap time on lap 8 of the Bahrain race.
-
-[Function calls happen automatically in the background]
-
-Agent: George Russell's lap time on lap 8 of the Bahrain race was 1:32.456. 
-This was his 8th lap of the race, and he was driving for Mercedes (driver #63).
-```
-
 ## Requirements
 
 - Google Gemini API key (set as environment variable `GEMINI_API_KEY`)

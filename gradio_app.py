@@ -7,7 +7,11 @@ A web-based chat interface for the F1 data assistant
 import os
 import sys
 import gradio as gr
-from typing import List, Tuple, Optional
+import smtplib
+from datetime import datetime
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from typing import List, Tuple
 
 # Add the current directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,6 +24,15 @@ class F1GradioApp:
         """Initialize the Gradio app with F1 Chat Agent"""
         self.agent = F1ChatAgent(verbose=False)  # Disable verbose mode for web interface
         self.chat_history = []
+        
+        # Email configuration
+        self.email_config = {
+            'smtp_server': os.getenv('SMTP_SERVER', 'smtp.gmail.com'),
+            'smtp_port': int(os.getenv('SMTP_PORT', '587')),
+            'sender_email': os.getenv('SENDER_EMAIL'),
+            'sender_password': os.getenv('SENDER_PASSWORD'),
+            'recipient_email': os.getenv('RECIPIENT_EMAIL'),
+        }
         
     def process_message(self, message: str, history: List[List[str]]) -> Tuple[str, List[List[str]]]:
         """
@@ -40,7 +53,7 @@ class F1GradioApp:
         
         try:
             # Process the message with the agent
-            print(f"\n=== DEBUG: Processing message ===")
+            print("\n=== DEBUG: Processing message ===")
             print(f"User message: {message}")
             
             response = self.agent.process_query(message)
@@ -48,7 +61,7 @@ class F1GradioApp:
             print(f"Agent response: {response}")
             print(f"Response type: {type(response)}")
             print(f"Response length: {len(str(response)) if response else 0}")
-            print(f"=== END DEBUG ===\n")
+            print("=== END DEBUG ===\n")
             
             # Update the last message with the response
             history[-1][1] = response
@@ -59,6 +72,61 @@ class F1GradioApp:
             error_msg = f"Error: {str(e)}"
             history[-1][1] = error_msg
             return "", history
+    
+    def send_bug_report(self, chat_history: List[List[str]]) -> str:
+        """
+        Send a bug report email with chat logs
+        
+        Args:
+            chat_history: Current chat history
+            
+        Returns:
+            Status message
+        """
+        try:
+            # Check if email is configured
+            if not all([self.email_config['sender_email'], 
+                       self.email_config['sender_password'], 
+                       self.email_config['recipient_email']]):
+                return "Email not configured. Please contact the administrator."
+            
+            # Create email content
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Format chat history
+            chat_log = "F1 Chat Agent Bug Report\n"
+            chat_log += f"Timestamp: {timestamp}\n"
+            chat_log += "=" * 50 + "\n\n"
+            
+            if chat_history:
+                for i, (user_msg, bot_msg) in enumerate(chat_history, 1):
+                    chat_log += f"Exchange {i}:\n"
+                    chat_log += f"User: {user_msg}\n"
+                    chat_log += f"Bot: {bot_msg}\n"
+                    chat_log += "-" * 30 + "\n\n"
+            else:
+                chat_log += "No chat history available.\n"
+            
+            # Create email
+            msg = MIMEMultipart()
+            msg['From'] = self.email_config['sender_email']
+            msg['To'] = self.email_config['recipient_email']
+            msg['Subject'] = f"F1 Chat Agent Bug Report - {timestamp}"
+            
+            msg.attach(MIMEText(chat_log, 'plain'))
+            
+            # Send email
+            server = smtplib.SMTP(self.email_config['smtp_server'], self.email_config['smtp_port'])
+            server.starttls()
+            server.login(self.email_config['sender_email'], self.email_config['sender_password'])
+            text = msg.as_string()
+            server.sendmail(self.email_config['sender_email'], self.email_config['recipient_email'], text)
+            server.quit()
+            
+            return "Bug report sent successfully!"
+            
+        except Exception as e:
+            return f"Failed to send bug report: {str(e)}"
     
     def create_interface(self) -> gr.Blocks:
         """Create and return the Gradio interface"""
@@ -131,8 +199,19 @@ class F1GradioApp:
                 )
                 send_btn = gr.Button("Send", variant="primary", scale=1)
             
-            # Clear button
-            clear_btn = gr.Button("Clear Chat", variant="secondary")
+            # Action buttons
+            with gr.Row():
+                clear_btn = gr.Button("Clear Chat", variant="secondary")
+                bug_report_btn = gr.Button("Report Bug", variant="secondary")
+            
+            # Status message for bug reports
+            status_msg = gr.Textbox(
+                value="",
+                label="Status",
+                interactive=False,
+                visible=False,
+                show_label=False
+            )
             
             # Event handlers
             def submit_message(message, history):
@@ -155,6 +234,17 @@ class F1GradioApp:
             clear_btn.click(
                 lambda: ([], []),
                 outputs=[chatbot, msg_input]
+            )
+            
+            # Bug report handler
+            def handle_bug_report(history):
+                result = self.send_bug_report(history)
+                return result, gr.update(visible=True)
+            
+            bug_report_btn.click(
+                handle_bug_report,
+                inputs=[chatbot],
+                outputs=[status_msg, status_msg]
             )
             
             # Footer

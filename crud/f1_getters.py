@@ -29,7 +29,17 @@ def get_sessions(year: int = 2025, session_type: str = None, session_name: str =
     if res.status_code == 200:
         json_data = res.json()
         sessions = [F1Session(**session_data) for session_data in json_data]
-        print(f"Retrieved {len(sessions)} sessions for {year}")
+        # Build parameter info for logging
+        params = []
+        if session_type:
+            params.append(f"type={session_type}")
+        if session_name:
+            params.append(f"name={session_name}")
+        if country_name:
+            params.append(f"country={country_name}")
+        
+        param_str = f" with {', '.join(params)}" if params else ""
+        print(f"Retrieved {len(sessions)} sessions for {year}{param_str}")
         
     else:
         print(f"Failed to fetch sessions. Status code: {res.status_code}")

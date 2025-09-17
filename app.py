@@ -117,11 +117,19 @@ class F1GradioApp:
             
             msg.attach(MIMEText(chat_log, 'plain'))
             
-            # Send email
+            # Send email with timeout and SSL fallback
             print(f"DEBUG: Connecting to SMTP server...")
-            server = smtplib.SMTP(self.email_config['smtp_server'], self.email_config['smtp_port'])
-            print(f"DEBUG: Starting TLS...")
-            server.starttls()
+            
+            # Try SSL first (port 465), then TLS (port 587)
+            if self.email_config['smtp_port'] == 465:
+                print(f"DEBUG: Using SSL connection...")
+                server = smtplib.SMTP_SSL(self.email_config['smtp_server'], self.email_config['smtp_port'], timeout=30)
+            else:
+                print(f"DEBUG: Using TLS connection...")
+                server = smtplib.SMTP(self.email_config['smtp_server'], self.email_config['smtp_port'], timeout=30)
+                print(f"DEBUG: Starting TLS...")
+                server.starttls()
+            
             print(f"DEBUG: Logging in...")
             server.login(self.email_config['sender_email'], self.email_config['sender_password'])
             print(f"DEBUG: Sending email...")
@@ -147,7 +155,20 @@ class F1GradioApp:
         except Exception as e:
             error_msg = f"Failed to send bug report: {str(e)}"
             print(f"DEBUG: Error occurred: {error_msg}")
-            return error_msg
+            
+            # Fallback: Save to file as backup
+            try:
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                filename = f"bug_report_{timestamp}.txt"
+                
+                with open(filename, 'w') as f:
+                    f.write(chat_log)
+                
+                print(f"DEBUG: Saved bug report to {filename} as backup")
+                return f"Email failed, but bug report saved to {filename}. Error: {str(e)}"
+            except Exception as backup_error:
+                print(f"DEBUG: Backup save also failed: {backup_error}")
+                return f"Failed to send email and save backup. Error: {str(e)}"
     
     def create_interface(self) -> gr.Blocks:
         """Create and return the Gradio interface"""
@@ -194,7 +215,6 @@ class F1GradioApp:
                 **Example queries:**
                 - "What was George Russell's lap time on lap 8 of Bahrain?"
                 - "Show me all drivers in the latest race"
-                - "What are the session times for the 2024 season?"
                 """,
                 elem_classes=["header"]
             )

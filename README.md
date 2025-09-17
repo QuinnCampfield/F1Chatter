@@ -39,7 +39,6 @@ An intelligent F1 data assistant that uses Google Gemini's function calling to r
 
 - "What was George Russell's lap time on lap 8 of Bahrain?"
 - "Show me all drivers in the latest race"
-- "What are the session times for the 2024 season?"
 - "Who had the fastest lap in qualifying at Monaco?"
 
 ## How It Works

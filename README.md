@@ -69,4 +69,4 @@ The agent uses Google Gemini's function calling feature to:
 ## Requirements
 
 - Google Gemini API key (set as environment variable `GEMINI_API_KEY`)
-- Internet connection for F1 data API calls
+- Internet connection for F1 data API calls 
